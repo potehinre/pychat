@@ -230,9 +230,9 @@ if __name__ == '__main__':
     argparse.add_argument("-p", "--port", type=int, action="store", dest="port",
                           default=8888, help="on which port run wsServer")
     argparse.add_argument("--loglevel", type=str, action="store", dest="loglevel",
-            default=logging.DEBUG)
+                          default=logging.DEBUG)
     args = argparse.parse_args()
-    logging.basicConfig(format = u'%(levelname)-8s [%(asctime)s] %(message)s', level = args.loglevel)
+    logging.basicConfig(format=u'%(levelname)-8s [%(asctime)s] %(message)s', level=args.loglevel)
     users = {}
     rooms = {}
     user2room = {}
