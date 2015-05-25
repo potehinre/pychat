@@ -1,0 +1,6 @@
+git clone https://github.com/potehinre/pychat.git
+virtualenv --no-site-packages pychat
+cd pychat
+source bin/activate
+pip install -r requirements.txt
+python server.py

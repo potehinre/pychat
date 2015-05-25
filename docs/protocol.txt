@@ -1,0 +1,50 @@
+Все общение происходит в формате JSON:
+
+1)Получение списка пользователей
+    Запрос:
+     {"cmd":"getuserlist"}
+    Ответ:
+     {"event": "userlist", "users": ["roman"]}
+
+2)Получение списка комнат
+    Запрос:
+     {"cmd":"getroomlist"}
+    Ответ:
+     {"event": "roomlist", "rooms": ["1stroom"]}
+
+3)Сменить ник
+    Запрос:
+     {"cmd": "changenick", "args": {"change_to": "new_nick"}}
+    Ответ:
+     {"event": "changednick", "from": "nick", "to": "new_nick"}
+
+4)Создание комнаты
+    Запрос:
+     {"cmd": "createroom", "args": {"room_name": "new_room"}} - сменить имя пользователя
+    Ответ:
+     {"event": "roomcreated", "name" : "new_room"}
+
+5)Вход в комнату
+    Запрос:
+     {"cmd": "joinroom", "args": {"name": "room_name"}}
+    Ответ:
+     {"event": "joinroom", "username": "username", "room": "roomname"}
+
+6)Выход из комнаты
+    Запрос:
+     {"cmd": "leaveroom", "args": {"name": "room_name"}}
+    Ответ:
+     {"event": "leaveroom", "username": "username", "room": "roomname"}
+
+7)Логин
+    Запрос:
+     {"cmd": "login", "args": {"nick": "username"}}
+    Ответ:
+     {"event": "login", "nick": "username"}
+
+8)Отправка сообщения
+    Запрос:
+     {"cmd": "message", "args": {"msg": "hello"}}
+    Ответ:
+     {"event": "message", "username": "username", "message": "message"}
+
