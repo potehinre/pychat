@@ -1,11 +1,15 @@
+""" pychat - WebSocket Chat With Rooms """
 #! /usr/bin/python
 # -*- coding: utf-8  -*-
 import json
+import argparse
+import logging
 from uuid import uuid4
 
 
 from tornado import ioloop
 from tornado.websocket import WebSocketHandler
+from tornado.websocket import WebSocketClosedError
 from tornado.web import Application
 from tornado.web import RequestHandler
 
@@ -37,9 +41,12 @@ class Room(object):
             try:
                 handler = self.user_handlers[user]
             except KeyError:
-                pass
+                logging.warning("user %s exists in a room but had no handler")
             else:
-                handler.write_message(msg)
+                try:
+                    handler.write_message(msg)
+                except WebSocketClosedError as e:
+                    logging.error("Unexpected socket close during room broadcast: %s", e)
 
     def join(self, username):
         if username in self.users:
@@ -80,7 +87,10 @@ class WebSocketChat(WebSocketHandler):
         self.users[self.username] = self
 
     def write_error(self, error_msg):
-        self.write_message({"error": error_msg})
+        try:
+            self.write_message({"error": error_msg})
+        except WebSocketClosedError as e:
+            logging.error("Unexpected socket close during write_error: %s", e)
 
     def broadcast_roomlist(self):
         msg = {"event": EVT_ROOMLIST, "rooms": list(self.rooms)}
@@ -94,9 +104,11 @@ class WebSocketChat(WebSocketHandler):
         try:
             msg = json.loads(message)
         except ValueError:
+            logging.error("Client sent incorrect json: %s", message)
             return
         if ("cmd" not in msg):
             self.write_error("Incorrect command")
+            logging.error("Client sent incorrect command: %s", msg)
             return
         cmd = msg["cmd"]
         if cmd not in ALLOWED_COMMANDS:
@@ -107,9 +119,14 @@ class WebSocketChat(WebSocketHandler):
             self.write_error("You must be logged in before execute commands")
             return
         if cmd == CMD_LOGIN:
-            nick = msg["args"]["nick"]
+            try:
+                nick = msg["args"]["nick"]
+            except KeyError:
+                logging.error("Client sent incorrect login command: %s", msg)
+                return
             if self.username in self.loggedin_users:
                 self.write_error("You had already logged in")
+                logging.info("Client %s tried to login more than one time", self.username)
                 return
             if nick in self.users:
                 self.write_error("This nick already used")
@@ -122,7 +139,11 @@ class WebSocketChat(WebSocketHandler):
                 self.broadcast_all({"event": EVT_LOGIN, "nick": nick})
                 self.broadcast_userlist()
         elif cmd == CMD_CREATEROOM:
-            room_name = msg["args"]["room_name"]
+            try:
+                room_name = msg["args"]["room_name"]
+            except KeyError:
+                logging.error("Client sent incorrect %s command: %s", cmd, msg)
+                return
             if room_name in self.rooms:
                 self.write_error("Room already exists")
             else:
@@ -137,7 +158,11 @@ class WebSocketChat(WebSocketHandler):
             msg = {"event": EVT_USERLIST, "users": list(self.loggedin_users)}
             self.write_message(msg)
         elif cmd == CMD_CHANGENICK:
-            to_nick = msg["args"]["change_to"]
+            try:
+                to_nick = msg["args"]["change_to"]
+            except KeyError:
+                logging.error("Client sent incorrect %s command: %s", cmd, msg)
+                return
             if to_nick in self.users:
                 self.write_error("This nick already used")
             else:
@@ -158,7 +183,11 @@ class WebSocketChat(WebSocketHandler):
                 self.broadcast_all(msg)
                 self.broadcast_userlist()
         elif cmd in (CMD_JOINROOM, CMD_LEAVEROOM):
-            room_name = msg["args"]["name"]
+            try:
+                room_name = msg["args"]["name"]
+            except KeyError:
+                logging.error("Client sent incorrect %s command: %s", cmd, msg)
+                return
             if room_name not in self.rooms:
                 self.write_error("Operation with nonexistent room")
             else:
@@ -182,7 +211,10 @@ class WebSocketChat(WebSocketHandler):
 
     def broadcast_all(self, msg):
         for handler in self.users.values():
-            handler.write_message(msg)
+            try:
+                handler.write_message(msg)
+            except WebSocketClosedError as e:
+                logging.error("Unexpected socket close during broadcasting message to all: %s", e)
 
     def on_close(self):
         del self.users[self.username]
@@ -196,6 +228,13 @@ class IndexPage(RequestHandler):
 
 
 if __name__ == '__main__':
+    argparse = argparse.ArgumentParser(__doc__)
+    argparse.add_argument("-p", "--port", type=int, action="store", dest="port",
+                          default=8888, help="on which port run wsServer")
+    argparse.add_argument("--loglevel", type=str, action="store", dest="loglevel", 
+            default=logging.DEBUG)
+    args = argparse.parse_args()
+    logging.basicConfig(format = u'%(levelname)-8s [%(asctime)s] %(message)s', level = args.loglevel)
     users = {}
     rooms = {}
     user2room = {}
@@ -208,5 +247,5 @@ if __name__ == '__main__':
                              loggedin_users=loggedin_users)),
         (r'/', IndexPage)
     ])
-    application.listen(8888)
+    application.listen(args.port)
     ioloop.IOLoop.instance().start()
