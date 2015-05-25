@@ -41,7 +41,7 @@ class Room(object):
             try:
                 handler = self.user_handlers[user]
             except KeyError:
-                logging.warning("user %s exists in a room but had no handler")
+                logging.warning("user %s exists in a room but had no handler", user)
             else:
                 try:
                     handler.write_message(msg)
