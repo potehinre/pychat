@@ -39,20 +39,74 @@
                 width: 20%;
                 height: 5%;
             }
+            .sys_message {
+                color: green;
+            }
+            .error_message {
+                color: red;
+            }
         </style>
         <script type="text/javascript" src="http://code.jquery.com/jquery-1.11.3.min.js">
         </script>
         <script type="text/javascript">
             $(document).ready(function() {
                 var ws = new WebSocket("ws://localhost:8888/websocket");
+                var refreshUserlist = function(ws) {
+                    ws.send(JSON.stringify({cmd: "getuserlist"}));
+                }
+                var refreshRoomlist = function(ws) {
+                    ws.send(JSON.stringify({cmd: "getroomlist"}));
+                }
                 ws.onopen = function() {
-                    alert("Connection initialized");
+                    refreshUserlist(this);
+                    refreshRoomlist(this);
                 }
                 ws.onclose = function() {
                     alert("Connection closed");
                 }
                 ws.onmessage = function(e) {
-                    $("#messages").append("<p class='message'>" + e.data  + "</p>");
+                    var data = JSON.parse(e.data)
+                    if ("event" in data) {
+                        if (data.event == "login") {
+                            var msg = "User " + data.nick + " has logged in";
+                            $("#messages").append("<p class='sys_message'>" + msg + "</p>");
+                        }
+                        if (data.event == "roomcreated") {
+                            var msg = "Room " + data.name + " has been created";
+                            $("#messages").append("<p class='sys_message'>" + msg + "</p>");
+                        }
+                        if (data.event == "changednick") {
+                            var msg = "User " + data.from + " has changed nick to " + data.to;
+                            $("#messages").append("<p class='sys_message'>" + msg + "</p>");
+                        }
+                        if (data.event == "joinroom") {
+                            var msg = "User " + data.username + " has joined " + data.room;
+                            $("#messages").append("<p class='sys_message'>" + msg + "</p>");
+                        }
+                        if (data.event == "leaveroom") {
+                            var msg = "User " + data.username + " has left " + data.room;
+                            $("#messages").append("<p class='sys_message'>" + msg + "</p>");
+                        }
+                        if (data.event == "roomlist") {
+                            $("#room_list").empty();
+                            for(var i = 0; i < data.rooms.length; i++) {
+                                $("#room_list").append("<li>" + data.rooms[i] + "</li>");
+                            }
+                        }
+                        if (data.event == "userlist") {
+                            $("#user_list").empty();
+                            for(var i = 0; i < data.users.length; i++) {
+                                $("#user_list").append("<li>" + data.users[i] + "</li>");
+                            }
+                        }
+                        if (data.event == "message") {
+                            var msg = "[" + data.username + "]:" + data.message;
+                            $("#messages").append("<p class='message'>" +  msg + "</p>");
+                        }
+                    }
+                    else if ("error" in data) {
+                        $("#messages").append("<p class='error_message'>" +  data.error + "</p>");
+                    }
                 }
                 ws.onerror = function(error) {
                     alert("Error:" +  error);
@@ -60,6 +114,43 @@
                 $("#message_send").click(function() {
                     var message = $("#message_box").val()
                     $("#message_box").val("")
+                    if (message[0] == '/') {
+                        var cmdArgs = message.split(/\s+/);
+                        if (cmdArgs[0] == '/login') {
+                            ws.send(JSON.stringify({
+                                    cmd: "login",
+                                    args: {"nick": cmdArgs[1]}}));
+                        }
+                        if (cmdArgs[0] == '/changenick') {
+                            ws.send(JSON.stringify({
+                                        cmd: "changenick",
+                                        args: {"change_to": cmdArgs[1]}
+                                    }));
+                        }
+                        if (cmdArgs[0] == '/createroom') {
+                            ws.send(JSON.stringify({
+                                        cmd: "createroom",
+                                        args: {"room_name": cmdArgs[1]}
+                                    }));
+                        }
+                        if (cmdArgs[0] == '/joinroom') {
+                            ws.send(JSON.stringify({
+                                        cmd: "joinroom",
+                                        args: {"name": cmdArgs[1]}
+                                    }));
+                        }
+                        if (cmdArgs[0] == '/leaveroom') {
+                            ws.send(JSON.stringify({
+                                        cmd: "leaveroom",
+                                        args: {"name": cmdArgs[1]}
+                                        }));
+                        }
+                    } else {
+                        ws.send(JSON.stringify({
+                                    cmd: "message",
+                                    args: {"msg": message}
+                                }));
+                    }
                 });
             });
         </script>
