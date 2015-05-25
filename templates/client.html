@@ -140,10 +140,7 @@
                                     }));
                         }
                         if (cmdArgs[0] == '/leaveroom') {
-                            ws.send(JSON.stringify({
-                                        cmd: "leaveroom",
-                                        args: {"name": cmdArgs[1]}
-                                        }));
+                            ws.send(JSON.stringify({cmd: "leaveroom"}));
                         }
                     } else {
                         ws.send(JSON.stringify({

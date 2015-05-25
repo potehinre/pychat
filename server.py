@@ -182,27 +182,25 @@ class WebSocketChat(WebSocketHandler):
                        "to": to_nick}
                 self.broadcast_all(msg)
                 self.broadcast_userlist()
-        elif cmd in (CMD_JOINROOM, CMD_LEAVEROOM):
+        elif cmd == CMD_LEAVEROOM:
+            if self.username in self.user2room:
+                current_room = self.user2room[self.username]
+                self.rooms[current_room].leave(self.username)
+                del self.user2room[self.username]
+        elif cmd == CMD_JOINROOM:
             try:
                 room_name = msg["args"]["name"]
             except KeyError:
                 logging.error("Client sent incorrect %s command: %s", cmd, msg)
                 return
             if room_name not in self.rooms:
-                self.write_error("Operation with nonexistent room")
+                self.write_error("Cannot join unexistent room")
             else:
-                if cmd == CMD_JOINROOM:
-                    if self.username in self.user2room:
-                        current_room = self.user2room[self.username]
-                        self.rooms[current_room].leave(self.username)
-                    self.rooms[room_name].join(self.username)
-                    self.user2room[self.username] = room_name
-                else:
-                    if self.username in self.user2room:
-                        self.rooms[room_name].leave(self.username)
-                        current_room = self.user2room[self.username]
-                        if current_room == room_name:
-                            del self.user2room[self.username]
+                if self.username in self.user2room:
+                    current_room = self.user2room[self.username]
+                    self.rooms[current_room].leave(self.username)
+                self.rooms[room_name].join(self.username)
+                self.user2room[self.username] = room_name
         elif cmd == CMD_MESSAGE:
             msg = msg["args"]["msg"]
             if self.username in self.user2room:
@@ -231,7 +229,7 @@ if __name__ == '__main__':
     argparse = argparse.ArgumentParser(__doc__)
     argparse.add_argument("-p", "--port", type=int, action="store", dest="port",
                           default=8888, help="on which port run wsServer")
-    argparse.add_argument("--loglevel", type=str, action="store", dest="loglevel", 
+    argparse.add_argument("--loglevel", type=str, action="store", dest="loglevel",
             default=logging.DEBUG)
     args = argparse.parse_args()
     logging.basicConfig(format = u'%(levelname)-8s [%(asctime)s] %(message)s', level = args.loglevel)

@@ -32,7 +32,7 @@
 
 6)Выход из комнаты
     Запрос:
-     {"cmd": "leaveroom", "args": {"name": "room_name"}}
+     {"cmd": "leaveroom"}
     Ответ:
      {"event": "leaveroom", "username": "username", "room": "roomname"}
 
